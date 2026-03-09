@@ -1,0 +1,23 @@
+# Training Parameters
+training:
+  batch_size: 4096
+  learning_rate: 0.00226274169
+  iteration: 240
+  l_exploit: 1
+  l_aux: 0.1  
+
+  l_im_intra: -5   # 只对分类启用：Agile 原文 IM-on-alpha-assembled
+  l_im_gate:  -5   # 回归可选：IM-on-gating(beta/w)
+
+
+  im_reduce: "mean"   # "mean" or "sum"
+  im_eps: 0.00000001
+
+
+  lr_gate: 0.001
+  lr_expert: 0.002
+  
+directories:
+  train: "data/gfp/gfp_train.tsv"
+  validation: "data/gfp/gfp_val.tsv"
+  test: "data/gfp/gfp_test.tsv"

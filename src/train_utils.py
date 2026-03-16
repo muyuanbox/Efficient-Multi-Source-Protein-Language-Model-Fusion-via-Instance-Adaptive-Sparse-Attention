@@ -145,6 +145,7 @@ def train_step(model, config, data_loader, optimizer, criterion, device, seq_dic
     return total_loss / total_samples, total_selection_counts, total_selection_samples
 
 
+from transfer_loss import jmmd_hsic_transfer_loss
 def train_step_dual_optimizer(
     model, config, data_loader,
     optimizer_gate, optimizer_expert,
@@ -229,8 +230,26 @@ def train_step_dual_optimizer(
         # #l_im = 0.0
 
         l_im, _, _ = im_loss_from_probs(p_gate, reduce="mean")
+        #l_im_balance = load_balance_loss(p_gate, mask)
 
         l_exploit = (mask_detached * loss_per_expert).sum() / (mask_detached.sum() + 1e-8)
+
+        # Step :加入transfer loss：
+        # 原: loss_expert = l_task + lambda_exploit * l_exploit
+        # 新:
+        lambda_transfer = config["training"].get("l_transfer", 0.0)
+        transfer_cfg = config["training"].get("transfer_cfg", None)
+        l_transfer = torch.tensor(0.0, device=device)
+        if lambda_transfer > 0:
+            l_transfer = jmmd_hsic_transfer_loss(
+                segs       = aux["segs"],
+                feats      = aux["feats"],
+                projectors = model.pred_head.projectors,
+                y          = tgt,
+                beta       = aux.get("w_soft", aux["w_final"]),
+                is_cls     = is_cls,
+                cfg        = transfer_cfg,
+            )
 
         # ================================================================
         # Step 3: 组合 Loss
@@ -251,7 +270,7 @@ def train_step_dual_optimizer(
         # ================================================================
         
         loss_gate   = l_task + lambda_im * l_im
-        loss_expert = l_task + lambda_exploit * l_exploit
+        loss_expert = l_task + lambda_exploit * l_exploit + 5 * l_transfer
 
         # 清零所有梯度
         optimizer_gate.zero_grad()
@@ -552,6 +571,20 @@ def _entropy_from_probs(p: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
     p = p.clamp_min(eps)
     return -(p * p.log()).sum(dim=-1)
 
+#Switch Transformer 风格的 importance + load balance loss
+
+def load_balance_loss(gate_probs, mask):
+    """
+    gate_probs: (B, M) softmax后的β权重
+    mask: (B, M) top-k的0/1 mask
+    """
+    # f_i: 每个专家实际被路由到的样本比例
+    f = mask.float().mean(dim=0)           # (M,)
+    # P_i: 每个专家的平均gate概率  
+    P = gate_probs.mean(dim=0)             # (M,)
+    # 惩罚 f 和 P 的相关性（防止富者越富）
+    return (f * P).sum() * len(f)
+
 def im_loss_from_probs(p: torch.Tensor, reduce: str = "mean", eps: float = 1e-8):
     """
     p: (B, ..., K)  概率分布
@@ -608,7 +641,8 @@ def split_params(model):
         expert_params.extend(list(net.fully_connected.parameters()))
     if hasattr(net, 'output_layer'):
         expert_params.extend(list(net.output_layer.parameters()))
-
+    if hasattr(net, 'projectors'):
+        expert_params.extend(list(net.projectors.parameters()))
     return gate_params, expert_params
 
 def init_linear_kaiming_relu(m: nn.Linear):

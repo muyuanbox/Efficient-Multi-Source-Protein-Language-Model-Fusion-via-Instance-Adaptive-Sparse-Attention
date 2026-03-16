@@ -154,6 +154,10 @@ class EmbeddingNetwork(nn.Module): #预测头 (Prediction Head)
         self.output_layer = nn.Linear(self.hidden_dimension, self.output_dimension)
         self.num_concat = num_concat
 
+        from transfer_loss import build_projectors
+        proj_rank = 64 
+        self.projectors = build_projectors(num_concat, self.hidden_dimension, proj_rank)
+        
         #β attention 相关设计
         self.beta_temp = 1.0  # 例如 1.0
 
@@ -328,6 +332,8 @@ class EmbeddingNetwork(nn.Module): #预测头 (Prediction Head)
             "y_tilde": y_tilde,      # (B,M,out_dim)  你已经算了
             "mask": mask,
             "w_soft": w_soft,
+            "segs": segs,       # ← 新增: list of (B, D_i), BN后原始PLM embedding
+            "feats": feats,      # ← 新增: list of (B, d_feat), adapter输出
         }
         return y_hat, mask, aux
     

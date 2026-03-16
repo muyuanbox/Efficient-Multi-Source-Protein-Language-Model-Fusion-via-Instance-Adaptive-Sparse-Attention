@@ -39,11 +39,6 @@ def train(args, config, model, embedding_dict, device, log_path, checkpoint_path
                 gate_params, expert_params,
                 criterion, device, seq_dict, epoch, training=True
             )
-            # train_loss, train_selection_counts, train_selection_samples = train_step(
-            #     model, config, train_loader,
-            #     optimizer,
-            #     criterion, device, seq_dict, training=True
-            # )
             val_loss, val_metric = test_step(model, config, val_loader, criterion, device, seq_dict, epoch)
             # 打印进度 (可选，方便终端查看)
             if epoch % 10 == 0:

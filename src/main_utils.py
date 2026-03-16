@@ -43,10 +43,10 @@ def get_run_name(dataset, embedding_string, hidden_dimension, seed):
 # Set up logging files
 def setup_logging_directories(dataset, run_name, embedding_string):
     if len(embedding_string) == 1 or embedding_string.isnumeric():
-        log_directory = os.path.join("results", "tplm_benchmark_results_exp_12_29")
+        log_directory = os.path.join("results", "tplm_benchmark_results_exp_3_14_iteration_200")
         os.makedirs(log_directory, exist_ok=True)
     else:
-        log_directory = os.path.join("results", "embedding_fusion_results_exp_12_29")
+        log_directory = os.path.join("results", "embedding_fusion_results_exp_3_14_iteration_200")
         os.makedirs(log_directory, exist_ok=True)
     
     log_path = os.path.join(log_directory, f'{dataset}_log.tsv')

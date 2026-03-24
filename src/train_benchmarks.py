@@ -3,7 +3,7 @@ import torch
 import torch.optim as optim
 from model import EmbeddingNetwork, WideEmbeddingNetwork, SequenceProjector
 from main_utils import (
-    load_config, set_seed, get_device, get_run_name,
+    load_config, override_config, set_seed, get_device, get_run_name,
     setup_logging_directories, load_embeddings, concatenate_embeddings,
     count_parameters, save_model, get_tsv_dirs
 )
@@ -111,12 +111,23 @@ def main():
     parser.add_argument("--project_dim", type=int, default=32)
     parser.add_argument("--topk", type=int, default=6)
     parser.add_argument("--explore_a", type=float, default=0.3)
-
+    parser.add_argument("--batch_size",     type=int,   default=None)
+    parser.add_argument("--iteration",      type=int,   default=None)
+    parser.add_argument("--lr_gate",        type=float, default=None)
+    parser.add_argument("--lr_expert",      type=float, default=None)
+    parser.add_argument("--learning_rate",  type=float, default=None)
+    parser.add_argument("--l_exploit",      type=float, default=None)
+    parser.add_argument("--l_aux",          type=float, default=None)
+    parser.add_argument("--l_im_intra",     type=float, default=None)
+    parser.add_argument("--l_im_gate",      type=float, default=None)
+    parser.add_argument("--l_transfer",     type=float, default=None)
+    parser.add_argument("--im_reduce",      type=str,   default=None, choices=["mean", "sum"])
 
     args = parser.parse_args()
     args.start_time = time.time()
     set_seed(args.seed)
     config = load_config(args.dataset) #读取 configs/{dataset}.yaml 中的训练/数据路径（当前光标位置说明该行的作用），以便后续加载 batch size、学习率等超参
+    config = override_config(config, args)   # <-- 命令行 > yaml
     device = get_device(args.device)
 
     run_name = get_run_name(args.dataset, args.embeddings, args.hidden_dimension, args.seed) #生成例如 aav_B_32_2 的唯一名称，用来区分不同嵌入/seed/隐藏维度组合

@@ -12,6 +12,28 @@ def load_config(dataset):
     with open(config_file_path, 'r') as file:
         return yaml.safe_load(file)
 
+def override_config(config, args):
+    """用命令行参数覆盖 yaml config（仅非 None 的字段）。"""
+    override_map = {
+        # argparse attr  →  (config 一级 key, 二级 key)
+        "batch_size":    ("training", "batch_size"),
+        "iteration":     ("training", "iteration"),
+        "lr_gate":       ("training", "lr_gate"),
+        "lr_expert":     ("training", "lr_expert"),
+        "learning_rate": ("training", "learning_rate"),
+        "l_exploit":     ("training", "l_exploit"),
+        "l_aux":         ("training", "l_aux"),
+        "l_im_intra":    ("training", "l_im_intra"),
+        "l_im_gate":     ("training", "l_im_gate"),
+        "l_transfer":    ("training", "l_transfer"),
+        "im_reduce":     ("training", "im_reduce"),
+    }
+    for attr, (k1, k2) in override_map.items():
+        val = getattr(args, attr, None)
+        if val is not None:
+            config[k1][k2] = val
+    return config
+    
 # Set random seed for reproducibility
 def set_seed(seed):
     random.seed(seed)
@@ -165,3 +187,4 @@ def normalize_embeddings(embedding_dict, device):
         norm_embedding = F.normalize(embedding.unsqueeze(0), p=2, dim=1)  # Apply L2 norm
         embedding_dict[key] = norm_embedding.squeeze(0).to(device)
     return embedding_dict
+

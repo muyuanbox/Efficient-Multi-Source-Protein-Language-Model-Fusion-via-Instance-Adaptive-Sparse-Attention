@@ -159,7 +159,7 @@ class EmbeddingNetwork(nn.Module): #预测头 (Prediction Head)
         self.projectors = build_projectors(num_concat, self.hidden_dimension, proj_rank)
         
         #β attention 相关设计
-        self.beta_temp = 1.0  # 例如 1.0
+        self.beta_temp = 1  # 例如 1.0
 
 
 

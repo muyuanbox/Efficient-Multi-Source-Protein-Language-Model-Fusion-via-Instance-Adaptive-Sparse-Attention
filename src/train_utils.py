@@ -5,7 +5,7 @@ import numpy as np
 import scipy.stats
 import torch.nn.functional as F
 import torch.nn as nn
-
+from im_loss import expert_orthogonality_loss, diversity_loss_from_probs
 ############ Utils for AAV, GB1, GFP, Location, Meltome, Stability Dataset Models ############
 class BenchmarkDataset(Dataset):
     def __init__(self, dictionary, file_path, target_type=float):
@@ -229,7 +229,8 @@ def train_step_dual_optimizer(
         # l_im, _, _ = im_loss_from_probs(p_gate, reduce="mean")
         # #l_im = 0.0
 
-        l_im, _, _ = im_loss_from_probs(p_gate, reduce="mean")
+        #l_im, _, _ = im_loss_from_probs(p_gate, reduce="mean")
+        l_im = diversity_loss_from_probs(p_gate)
         #l_im_balance = load_balance_loss(p_gate, mask)
 
         l_exploit = (mask_detached * loss_per_expert).sum() / (mask_detached.sum() + 1e-8)
@@ -250,7 +251,10 @@ def train_step_dual_optimizer(
                 is_cls     = is_cls,
                 cfg        = transfer_cfg,
             )
+        if epoch % 10 ==0 :
+            print(aux["w_soft"])
 
+            
         # ================================================================
         # Step 3: 组合 Loss
         # ================================================================
@@ -679,3 +683,44 @@ def assign_grads(params, grads):
             p.grad = None
         else:
             p.grad = g.detach()
+
+
+
+
+#better expert specialization
+
+def expert_orthogonality_loss(feats, gate_weights):
+    """
+    Args:
+        feats:        list[Tensor(B, d_feat)]  adapter 输出, len = M
+        gate_weights: Tensor(B, M)             gate 权重 (会被 detach)
+ 
+    Returns:
+        l_ortho: scalar tensor, 梯度只流向 feats (adapter 参数)
+    """
+    M = len(feats)
+    #w = gate_weights.detach()  # (B, M), 阻断 gate 梯度
+ 
+    prototypes = []
+    for i in range(M):
+        h_norm = F.normalize(feats[i], dim=-1)      # (B, d_feat)
+        wi = gate_weights[:, i]                                  # (B,)
+ 
+        # 防止权重全零: 回退到均匀权重
+        wi_sum = wi.sum()
+        if wi_sum < 1e-8:
+            wi = torch.ones_like(wi)
+            wi_sum = wi.sum()
+ 
+        wi = wi / wi_sum                              # 归一化为概率
+        c_i = (wi.unsqueeze(-1) * h_norm).sum(dim=0)  # (d_feat,)
+        c_i = F.normalize(c_i, dim=0)                 # 单位长度
+        prototypes.append(c_i)
+ 
+    C = torch.stack(prototypes, dim=0)    # (M, d_feat)
+    gram = C @ C.t()                      # (M, M)
+    I = torch.eye(M, device=gram.device, dtype=gram.dtype)
+ 
+    l_ortho = (gram - I).pow(2).sum()
+    return l_ortho
+ 

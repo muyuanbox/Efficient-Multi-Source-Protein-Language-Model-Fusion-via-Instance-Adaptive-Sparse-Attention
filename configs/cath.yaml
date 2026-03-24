@@ -1,0 +1,32 @@
+# CATH Homologous Sequence Recovery - adapted to multi-PLM expert system
+# Proxy task: superfamily classification -> retrieval evaluation
+
+directories:
+  superfamilies: "data/cath/cath_superfamilies.tsv"
+  queries: "data/cath/cath_queries.tsv"
+  sequences: "data/cath/cath_sequences.tsv"
+
+training:
+  batch_size: 256
+  iteration: 100           # epochs
+  lr_gate: 0.0005
+  lr_expert: 0.001
+  l_exploit: 0.3
+  l_aux: 0.0
+  l_im_gate: 0.1
+  l_im_intra: 0.1
+  l_transfer: 0.0          # transfer loss weight (set >0 to enable)
+  im_reduce: "mean"
+  im_eps: 1.0e-8
+  transfer_cfg:
+    sigma_x: "auto"
+    sigma_y: 1.0
+    lambda_disc: 0.1
+    proj_rank: 64
+
+split:
+  train_ratio: 0.8
+  seed: 42                  # split random seed (deterministic)
+
+evaluation:
+  exclude_self: true        # exclude query itself from retrieval

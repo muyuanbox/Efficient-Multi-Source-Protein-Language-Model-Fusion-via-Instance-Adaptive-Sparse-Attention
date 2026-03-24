@@ -1,0 +1,38 @@
+# CATH Hierarchical Retrieval Configuration
+# ==========================================
+
+data:
+  superfamily_tsv: "data/cath/cath_superfamilies.tsv"
+  query_tsv: "data/cath/cath_queries.tsv"
+
+model:
+  hidden_dim: 512
+  num_subcenters: 2        # R metric sub-centers per source
+  topk: null               # null = use all experts; set 2/3 for sparse routing
+  beta_temp: 1.0           # β softmax temperature
+  alpha_temp: 0.5          # α softmax temperature
+  project_dim: 256         # retrieval embedding dim
+
+loss:
+  tau_ret: 0.07            # InfoNCE temperature
+  tau_hier: 0.07           # hierarchical contrastive temperature #lambda_hier（层次对比权重）
+  lambda_proxy: 1.0        # proxy ArcFace weight #L_proxy 是 ArcFace 式 proxy 分类
+  lambda_hier: 0.05         # hierarchical contrastive weight
+  lambda_balance: 0.1      # gate IM loss weight
+  lambda_cons: 0.1         # fused-source consistency weight
+  proxy_scale: 30.0        # ArcFace logit scale s
+  proxy_margin: 0.2        # ArcFace angular margin m
+  hier_weights: [0, 0.0, 0.1, 1.0]  # [λ_C, λ_A, λ_T, λ_H]
+
+training:
+  epochs: 40
+  eval_freq: 1
+  P: 32                    # superfamilies per batch
+  K: 4                     # samples per superfamily per batch  → batch=128
+  lr_gate: 1.0e-4
+  lr_expert: 1.0e-4
+  weight_decay: 1.0e-4
+  scheduler_t0: 50                  # CosineAnnealingWarmRestarts period
+  lambda_balance: 0.1      # (duplicated for train loop access)
+  checkpoint_dir: "checkpoints/cath_retrieval"
+  log_dir: "results/cath_retrieval"
